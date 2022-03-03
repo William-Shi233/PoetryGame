@@ -1,0 +1,5 @@
+maxPlayers: 10
+minPlayers: 2
+timeBeforeInit: 30000
+timeVote: 10000
+timeRound: 20000

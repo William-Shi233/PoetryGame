@@ -1,0 +1,4 @@
+maxPlayers: 10
+minPlayers: 1
+timeBeforeInit: 30000
+maxAttempts: 10
