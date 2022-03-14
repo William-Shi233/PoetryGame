@@ -13,7 +13,14 @@ import java.util.stream.Collectors;
  */
 public class Preset {
     public static final List<String> PRESET_KEY_WORDS = List.of(
-            "飛", "花", "人", "間", "平", "生", "萬", "里", "何", "處", "知", "見", "青", "山", "春", "風", "歸", "來", "悠", "月", "明"
+            "不", "人", "一", "無", "山", "風", "有", "來",
+            "天", "日", "何", "如", "中", "自", "生", "時",
+            "雲", "年", "爲", "春", "花", "知", "此", "月",
+            "水", "我", "得", "相", "上", "未", "心", "君",
+            "清", "歸", "子", "老", "行", "見", "長", "事",
+            "今", "三", "可", "是", "去", "江", "白", "雨",
+            "與", "千", "下", "萬", "秋", "空", "明", "已",
+            "在", "高", "寒", "家", "詩", "誰", "夜", "處"
     );
     public static final File PRESET_OUTPUT_DIR = new File("C:/Users/williamshi/Documents/Code/PoetryGame/src/main/resources/preset");
 

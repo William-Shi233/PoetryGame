@@ -64,6 +64,15 @@ public class Constants {
             case 10:
                 return "十";
             default: {
+                if (number > 10 && number < 100) {
+                    int min = number % 10;
+                    return convertChineseNumbers((number - min) / 10) +
+                            convertChineseNumbers(10) +
+                            convertChineseNumbers(min);
+                }
+                // Internal use only.
+                // Poetry lines no longer than 100 chars expected.
+                // Lines any longer should be stripped of notes and comments in "（）".
                 throw new UnsupportedOperationException();
             }
         }

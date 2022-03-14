@@ -21,25 +21,22 @@ public class PoetryUtils {
 
     static {
         Gson gson = new Gson();
-        gson.fromJson(new InputStreamReader(
-                        Main.getPlugin(Main.class).getResource("rank.json"),
-                        StandardCharsets.UTF_8
-                ), List.class)
-                .stream().forEach(obj -> {
-                    Map<String, Object> map = (Map<String, Object>) obj;
-                    Poem poem = Poem.deserialize(map);
-                    poem.getCutParagraphs();
-                    ALL_POEMS.put(poem.getId(), poem);
-                });
-        TANG_TOPS.addAll((Collection<? extends Poem>)
-                gson.fromJson(new InputStreamReader(
-                                Main.getPlugin(Main.class).getResource("tangtop.json"),
-                                StandardCharsets.UTF_8
-                        ), List.class)
-                        .stream()
-                        .map(obj -> Poem.deserialize((Map<String, Object>) obj))
-                        .peek(poem -> ((Poem) poem).getCutParagraphs())
-                        .collect(Collectors.toList()));
+        ((List<Map<String, Object>>) gson.fromJson(new InputStreamReader(
+                Main.getPlugin(Main.class).getResource("rank.json"),
+                StandardCharsets.UTF_8
+        ), List.class))
+                .stream()
+                .map(Poem::deserialize)
+                .peek(Poem::getCutParagraphs)
+                .forEach(poem -> ALL_POEMS.put(poem.getId(), poem));
+        ((List<Map<String, Object>>) gson.fromJson(new InputStreamReader(
+                Main.getPlugin(Main.class).getResource("tangtop.json"),
+                StandardCharsets.UTF_8
+        ), List.class))
+                .stream()
+                .map(Poem::deserialize)
+                .peek(Poem::getCutParagraphs)
+                .forEach(TANG_TOPS::add);
     }
 
     public static Poem searchFromAll(String poem) {
@@ -83,7 +80,7 @@ public class PoetryUtils {
                 break;
             }
         }
-        return ALL_POEMS.get(reference.get());
+        return reference.get() == null ? null : ALL_POEMS.get(reference.get());
     }
 
     public static Poem searchFromPreset(String poem, String key) {

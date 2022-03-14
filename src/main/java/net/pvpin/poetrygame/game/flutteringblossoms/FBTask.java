@@ -1,5 +1,6 @@
 package net.pvpin.poetrygame.game.flutteringblossoms;
 
+import net.md_5.bungee.api.chat.TextComponent;
 import net.pvpin.poetrygame.api.Main;
 import net.pvpin.poetrygame.api.events.flutteringblossom.AsyncFBAnswerEvent;
 import net.pvpin.poetrygame.api.events.flutteringblossom.AsyncFBTimeoutEvent;
@@ -26,79 +27,100 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * @author William_Shi
  */
 class FBTask {
-    protected FBGame game;
+    protected final ConcurrentLinkedDeque<UUID> currentGamers = new ConcurrentLinkedDeque<>();
+    public String keyWord;
+
+    protected Game game;
     protected long roundStamp;
     protected AtomicBoolean initNewRound = new AtomicBoolean(true);
 
-    protected FBTask(FBGame game) {
+    protected FBTask(Game game) {
         this.game = game;
     }
 
     protected void run() {
-        new FBCountDown(game, this)
-                .runTaskTimerAsynchronously(Main.getPlugin(Main.class), 10L, 10L);
+        try {
+            BroadcastUtils.broadcast(
+                    Constants.PREFIX + "諸君各言行令之字。",
+                    game.getPlayers());
+            CompletableFuture<String> future = new CompletableFuture<>();
+            FBVote vote = new FBVote(game, future);
+            vote.schedule();
+            this.keyWord = future.get();
+            PoetryUtils.PresetManager.loadPreset(keyWord);
+            BroadcastUtils.broadcast(
+                    Constants.PREFIX + "行令字" + keyWord + "字。",
+                    game.getPlayers());
+            new FBCountDown(game, this)
+                    .runTaskTimerAsynchronously(Main.getPlugin(Main.class), 10L, 10L);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+
         while (game.getStatus() == 1) {
-            if (game.currentGamers.size() <= 1) {
+            if (currentGamers.size() <= 1) {
                 game.end();
                 return;
             }
             if (initNewRound.get()) {
                 roundStamp = System.currentTimeMillis();
-                BroadcastUtils.broadcast(
-                        Constants.PREFIX + "依次第， " +
-                                Bukkit.getOfflinePlayer(game.getCurrentPlayer()).getName() + " 行令。",
+                BroadcastUtils.broadcast(Constants.PREFIX + "依次第， " +
+                                Bukkit.getOfflinePlayer(currentGamers.peekFirst()).getName() + " 行令。",
                         game.getPlayers());
                 initNewRound.set(false);
             }
             CompletableFuture<Game.Session> future = new CompletableFuture<>();
-            FBListener listener = new FBListener(game.getCurrentPlayer(), future);
+            FBListener listener = new FBListener(currentGamers.peekFirst(), future);
             Bukkit.getPluginManager().registerEvents(listener, Main.getPlugin(Main.class));
             try {
                 Game.Session session = future.get(ConfigManager.FlutteringBlossoms.TIME_ROUND - (System.currentTimeMillis() - roundStamp), TimeUnit.MILLISECONDS);
                 HandlerList.unregisterAll(listener);
                 String stripped = PoetryUtils.strip(session.getContent());
-                Poem result = PoetryUtils.searchFromPreset(stripped, game.keyWord);
+                Poem result = PoetryUtils.searchFromPreset(stripped, keyWord);
                 session.setPoem(result);
-                boolean contains = contains(game.record, session);
-                game.record.add(session);
+                boolean contains = contains(game.getRecord(), session);
+                game.getRecord().add(session);
 
                 if (contains) {
+                    session.setCorrect(false);
                     if (ConfigManager.FlutteringBlossoms.TIME_ROUND - (System.currentTimeMillis() - roundStamp) <= 0) {
                         kickCurrent();
                         continue;
                     }
-                    AsyncFBAnswerEvent customEvent = new AsyncFBAnswerEvent(game, Bukkit.getPlayer(game.getCurrentPlayer()), session.getContent(), AsyncFBAnswerEvent.Result.REDUNDANT_POEM);
+                    AsyncFBAnswerEvent customEvent = new AsyncFBAnswerEvent(game, Bukkit.getPlayer(currentGamers.peekFirst()), session.getContent(), AsyncFBAnswerEvent.Result.REDUNDANT_POEM);
                     Bukkit.getPluginManager().callEvent(customEvent);
-                    BroadcastUtils.broadcast(
-                            Constants.PREFIX +
-                                    Bukkit.getOfflinePlayer(game.getCurrentPlayer()).getName() +
+                    BroadcastUtils.broadcast(Constants.PREFIX +
+                                    Bukkit.getOfflinePlayer(currentGamers.peekFirst()).getName() +
                                     " 行令“" + session.getContent() + "”。同前人重。須另覓佳句。",
                             game.getPlayers());
                     continue;
                 }
-                if (result == null || (!stripped.contains(PoetryUtils.strip(game.keyWord)))) {
+                if (result == null || (!stripped.contains(PoetryUtils.strip(keyWord)))) {
+                    session.setCorrect(false);
                     if (ConfigManager.FlutteringBlossoms.TIME_ROUND - (System.currentTimeMillis() - roundStamp) <= 0) {
                         kickCurrent();
                         continue;
                     }
-                    AsyncFBAnswerEvent customEvent = new AsyncFBAnswerEvent(game, Bukkit.getPlayer(game.getCurrentPlayer()), session.getContent(), AsyncFBAnswerEvent.Result.UNKNOWN_POEM);
+                    AsyncFBAnswerEvent customEvent = new AsyncFBAnswerEvent(game, Bukkit.getPlayer(currentGamers.peekFirst()), session.getContent(), AsyncFBAnswerEvent.Result.UNKNOWN_POEM);
                     Bukkit.getPluginManager().callEvent(customEvent);
-                    BroadcastUtils.broadcast(
-                            Constants.PREFIX +
-                                    Bukkit.getOfflinePlayer(game.getCurrentPlayer()).getName() +
+                    BroadcastUtils.broadcast(Constants.PREFIX +
+                                    Bukkit.getOfflinePlayer(currentGamers.peekFirst()).getName() +
                                     " 行令“" + session.getContent() + "”。不知所云者何。",
                             game.getPlayers());
                 } else {
-                    AsyncFBAnswerEvent customEvent = new AsyncFBAnswerEvent(game, Bukkit.getPlayer(game.getCurrentPlayer()), session.getContent(), AsyncFBAnswerEvent.Result.SUCCESS);
+                    session.setCorrect(true);
+                    AsyncFBAnswerEvent customEvent = new AsyncFBAnswerEvent(game, Bukkit.getPlayer(currentGamers.peekFirst()), session.getContent(), AsyncFBAnswerEvent.Result.SUCCESS);
                     Bukkit.getPluginManager().callEvent(customEvent);
                     initNewRound.set(true);
-                    BroadcastUtils.broadcast(
-                            Constants.PREFIX +
-                                    Bukkit.getOfflinePlayer(game.getCurrentPlayer()).getName() +
-                                    " 行令“" + session.getContent() + "”。" +
-                                    "句出" + result.getAuthor() + "《" + result.getTitle() + "》。",
-                            game.getPlayers());
-                    game.currentGamers.offerLast(game.currentGamers.pollFirst());
+                    TextComponent component = new TextComponent(Constants.PREFIX);
+                    component.addExtra(new TextComponent(Bukkit.getOfflinePlayer(currentGamers.peekFirst()).getName()));
+                    component.addExtra(new TextComponent(" 行令“"));
+                    component.addExtra(new TextComponent(session.getContent()));
+                    component.addExtra(new TextComponent("”。句出《"));
+                    component.addExtra(BroadcastUtils.generatePoemComponent(result.getTitle(), result));
+                    component.addExtra(new TextComponent("》。"));
+                    BroadcastUtils.broadcast(component, game.getPlayers());
+                    currentGamers.offerLast(currentGamers.pollFirst());
                 }
             } catch (InterruptedException | ExecutionException | TimeoutException ex) {
                 HandlerList.unregisterAll(listener);
@@ -109,11 +131,11 @@ class FBTask {
 
     private void kickCurrent() {
         initNewRound.set(true);
-        UUID player = game.currentGamers.pollFirst();
+        UUID player = currentGamers.pollFirst();
         if (player == null) {
             return;
         }
-        AsyncFBTimeoutEvent event = new AsyncFBTimeoutEvent(game, Bukkit.getPlayer(game.getCurrentPlayer()));
+        AsyncFBTimeoutEvent event = new AsyncFBTimeoutEvent(game, Bukkit.getPlayer(currentGamers.peekFirst()));
         Bukkit.getPluginManager().callEvent(event);
         BroadcastUtils.broadcast(
                 Constants.PREFIX + Bukkit.getOfflinePlayer(player).getName() + " 自罰三樽。"
@@ -131,13 +153,13 @@ class FBTask {
                 .forEach(s -> {
                     var poetry = s.getPoem();
                     poetry.getCutParagraphs().forEach(para -> {
-                        if (para.contains(game.keyWord) && PoetryUtils.strip(s.getContent()).contains(PoetryUtils.strip(para)))
+                        if (para.contains(keyWord) && PoetryUtils.strip(s.getContent()).contains(PoetryUtils.strip(para)))
                             content.add(PoetryUtils.strip(para));
                     });
                 });
         List<String> contentPoem = new ArrayList<>(16);
         poem.getPoem().getCutParagraphs().forEach(para -> {
-            if (para.contains(game.keyWord) && PoetryUtils.strip(poem.getContent()).contains(PoetryUtils.strip(para)))
+            if (para.contains(keyWord) && PoetryUtils.strip(poem.getContent()).contains(PoetryUtils.strip(para)))
                 contentPoem.add(PoetryUtils.strip(para));
         });
         AtomicBoolean bool = new AtomicBoolean(true);
@@ -147,6 +169,8 @@ class FBTask {
             }
         });
         // return contentPoem.stream().anyMatch(content::contains);
+        // Need false when at least one para is not mentioned previously.
+        // Some paras' having been mentioned can be accepted.
         return bool.get();
     }
 

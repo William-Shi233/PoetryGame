@@ -1,15 +1,14 @@
-package net.pvpin.poetrygame.game.poetrywordle;
+package net.pvpin.poetrygame.game.poetryfilling;
 
-import net.md_5.bungee.api.ChatColor;
 import net.pvpin.poetrygame.api.Main;
-import net.pvpin.poetrygame.api.events.poetrywordle.AsyncPWAnswerEvent;
-import net.pvpin.poetrygame.api.events.poetrywordle.AsyncPWQuestionGenEvent;
-import net.pvpin.poetrygame.api.events.poetrywordle.AsyncPWTimeoutEvent;
+import net.pvpin.poetrygame.api.events.poetryfilling.AsyncPFAnswerEvent;
+import net.pvpin.poetrygame.api.events.poetryfilling.AsyncPFQuestionGenEvent;
+import net.pvpin.poetrygame.api.events.poetryfilling.AsyncPFTimeoutEvent;
 import net.pvpin.poetrygame.api.poetry.Poem;
+import net.pvpin.poetrygame.api.poetry.PoetryUtils;
 import net.pvpin.poetrygame.api.utils.BroadcastUtils;
 import net.pvpin.poetrygame.api.utils.ConfigManager;
 import net.pvpin.poetrygame.api.utils.Constants;
-import net.pvpin.poetrygame.api.poetry.PoetryUtils;
 import net.pvpin.poetrygame.game.Game;
 import org.bukkit.Bukkit;
 import org.bukkit.event.EventHandler;
@@ -19,6 +18,7 @@ import org.bukkit.event.player.AsyncPlayerChatEvent;
 
 import java.util.List;
 import java.util.Map;
+import java.util.StringJoiner;
 import java.util.UUID;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -27,7 +27,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 /**
  * @author William_Shi
  */
-class PWTask {
+class PFTask {
+    protected String currentQuestion;
     protected String currentAnswer;
     protected Poem currentAnswerPoem;
 
@@ -37,15 +38,15 @@ class PWTask {
     protected long roundStamp;
     protected AtomicBoolean initNewRound = new AtomicBoolean(true);
 
-    protected PWTask(Game game) {
+    protected PFTask(Game game) {
         this.game = game;
     }
 
     protected void run() {
-        new PWCountDown(game, this)
+        new PFCountDown(game, this)
                 .runTaskTimerAsynchronously(Main.getPlugin(Main.class), 10L, 10L);
         do {
-            if (currentRound.get() == ConfigManager.PoetryWordle.ROUND_NUMBER) {
+            if (currentRound.get() == ConfigManager.PoetryFilling.ROUND_NUMBER) {
                 BroadcastUtils.broadcast(
                         Constants.PREFIX + "答案：" + currentAnswer + "。",
                         game.getPlayers());
@@ -62,50 +63,57 @@ class PWTask {
                 attemptMap.clear();
                 initNewRound.set(false);
                 Poem ranPoem = PoetryUtils.TANG_TOPS.get(ThreadLocalRandom.current().nextInt(PoetryUtils.TANG_TOPS.size()));
-                currentAnswer = ranPoem.getCutParagraphs().get(ThreadLocalRandom.current().nextInt(ranPoem.getCutParagraphs().size()));
-                AsyncPWQuestionGenEvent event = new AsyncPWQuestionGenEvent(game, currentAnswer);
+                String answerFull = ranPoem.getCutParagraphs().get(ThreadLocalRandom.current().nextInt(ranPoem.getCutParagraphs().size()));
+                int startChar = ThreadLocalRandom.current().nextInt(answerFull.length());
+                int endChar = startChar + (startChar == answerFull.length() - 1 ? 1 : ThreadLocalRandom.current().nextInt(1) + 1);
+                String undividedQuestion = new StringBuilder(answerFull)
+                        .replace(startChar, endChar, "\u2587").toString();
+                StringJoiner questionJoiner = new StringJoiner(" ");
+                for (char c : undividedQuestion.toCharArray())
+                    questionJoiner.add(String.valueOf(c));
+                currentQuestion = questionJoiner.toString();
+                currentAnswer = answerFull.substring(startChar, endChar);
+                AsyncPFQuestionGenEvent event = new AsyncPFQuestionGenEvent(game, currentQuestion, currentAnswer);
                 Bukkit.getPluginManager().callEvent(event);
+                currentQuestion = event.getQuestion();
                 currentAnswer = event.getAnswer();
+                currentAnswerPoem = ranPoem;
                 Bukkit.getScheduler().runTaskLaterAsynchronously(Main.getPlugin(Main.class), () -> {
                     BroadcastUtils.broadcast(
-                            Constants.PREFIX +
-                                    Constants.convertChineseNumbers(currentAnswer.length()) +
-                                    "言詩一句。詩出《唐詩三百首》。請君臆斷。",
+                            Constants.PREFIX + "塡空：" + currentQuestion,
                             game.getPlayers());
                 }, 3L);
             }
             CompletableFuture<Game.Session> future = new CompletableFuture<>();
-            PWTask.PWListener listener = new PWTask.PWListener(game.getPlayers(), future);
+            PFTask.PFListener listener = new PFTask.PFListener(game.getPlayers(), future);
             Bukkit.getPluginManager().registerEvents(listener, Main.getPlugin(Main.class));
             try {
-                Game.Session result = future.get(ConfigManager.PoetryWordle.TIME_ROUND - (System.currentTimeMillis() - roundStamp), TimeUnit.MILLISECONDS);
+                Game.Session result = future.get(ConfigManager.PoetryFilling.TIME_ROUND - (System.currentTimeMillis() - roundStamp), TimeUnit.MILLISECONDS);
                 HandlerList.unregisterAll(listener);
-                AsyncPWAnswerEvent customEvent = new AsyncPWAnswerEvent(game, currentAnswer, result.getContent(), Bukkit.getPlayer(result.getPlayer()));
-                Bukkit.getPluginManager().callEvent(customEvent);
+                AsyncPFAnswerEvent event = new AsyncPFAnswerEvent(game, currentQuestion, currentAnswer, result.getContent(), Bukkit.getPlayer(result.getPlayer()));
+                Bukkit.getPluginManager().callEvent(event);
                 String stripped = PoetryUtils.strip(result.getContent());
                 game.getRecord().add(result);
 
                 if (stripped.equals(PoetryUtils.strip(currentAnswer))) {
                     result.setCorrect(true);
-                    result.setPoem(PoetryUtils.searchFromAll(stripped));
+                    result.setPoem(currentAnswerPoem);
                     this.initNewRound.set(true);
-                    BroadcastUtils.broadcast(
-                            Constants.PREFIX +
+                    BroadcastUtils.broadcast(Constants.PREFIX +
                                     Bukkit.getOfflinePlayer(result.getPlayer()).getName() +
-                                    " 猜出“" + currentAnswer + "”。",
+                                    " 辨出“" + result.getContent() + "”。",
                             game.getPlayers());
                     continue;
                 }
-                BroadcastUtils.broadcast(
-                        Constants.PREFIX +
+                BroadcastUtils.broadcast(Constants.PREFIX +
                                 Bukkit.getOfflinePlayer(result.getPlayer()).getName() +
-                                " 猜作“§r " + highlightWordle(result.getContent()) + "§r§6”。非是。",
+                                " 認定“" + result.getContent() + "”。非是。",
                         game.getPlayers());
-                this.initNewRound.set(ConfigManager.PoetryWordle.TIME_ROUND - (System.currentTimeMillis() - roundStamp) <= 0);
+                this.initNewRound.set(ConfigManager.PoetryFilling.TIME_ROUND - (System.currentTimeMillis() - roundStamp) <= 0);
             } catch (InterruptedException | ExecutionException | TimeoutException ex) {
+                AsyncPFTimeoutEvent event = new AsyncPFTimeoutEvent(game, currentQuestion, currentAnswer);
+                Bukkit.getPluginManager().callEvent(event);
                 HandlerList.unregisterAll(listener);
-                AsyncPWTimeoutEvent customEvent = new AsyncPWTimeoutEvent(game);
-                Bukkit.getPluginManager().callEvent(customEvent);
                 this.initNewRound.set(true);
             }
         } while ((currentRound.get() <= ConfigManager.PoetryWordle.ROUND_NUMBER) && game.getStatus() == 1);
@@ -114,42 +122,11 @@ class PWTask {
         }, 5L);
     }
 
-    private String highlightWordle(String str) {
-        String strippedAnswerPlayer = PoetryUtils.strip(str);
-        String strippedAnswerCorrect = PoetryUtils.strip(currentAnswer);
-        if (strippedAnswerPlayer.length() != strippedAnswerCorrect.length()) {
-            return str;
-        }
-        StringBuilder builder = new StringBuilder();
-        for (int index = 0; index < strippedAnswerPlayer.length(); index++) {
-            char character = strippedAnswerPlayer.charAt(index);
-            if (!strippedAnswerCorrect.contains(String.valueOf(character))) {
-                builder.append(ChatColor.RESET);
-                builder.append(ChatColor.RED);
-                builder.append(character);
-                builder.append(" ");
-                continue;
-            }
-            if (strippedAnswerPlayer.charAt(index) == strippedAnswerCorrect.charAt(index)) {
-                builder.append(ChatColor.RESET);
-                builder.append(ChatColor.GREEN);
-                builder.append(character);
-            } else {
-                builder.append(ChatColor.RESET);
-                builder.append(ChatColor.YELLOW);
-                builder.append(character);
-            }
-            builder.append(" ");
-        }
-        return builder.toString();
-    }
-
-
-    private class PWListener implements Listener {
+    private class PFListener implements Listener {
         protected final List<UUID> players;
         protected final CompletableFuture<Game.Session> future;
 
-        protected PWListener(List<UUID> players, CompletableFuture<Game.Session> future) {
+        protected PFListener(List<UUID> players, CompletableFuture<Game.Session> future) {
             this.players = players;
             this.future = future;
         }
@@ -159,12 +136,12 @@ class PWTask {
             if (!players.contains(event.getPlayer().getUniqueId())) {
                 return;
             }
-            if (!(event.getMessage().startsWith("猜詩") || event.getMessage().startsWith("猜诗"))) {
+            if (!(event.getMessage().startsWith("塡空") || event.getMessage().startsWith("填空"))) {
                 return;
             }
             if (attemptMap.containsKey(event.getPlayer().getUniqueId())) {
                 int times = attemptMap.get(event.getPlayer().getUniqueId()).incrementAndGet();
-                if (times > ConfigManager.PoetryWordle.MAX_ATTEMPTS) {
+                if (times > ConfigManager.PoetryFilling.MAX_ATTEMPTS) {
                     BroadcastUtils.broadcast(
                             Constants.PREFIX + event.getPlayer().getName() + " 三猜不中的。",
                             game.getPlayers());

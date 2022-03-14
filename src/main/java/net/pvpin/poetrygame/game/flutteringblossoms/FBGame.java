@@ -15,18 +15,11 @@ import java.util.concurrent.*;
  * @author William_Shi
  */
 public class FBGame extends Game {
-    protected final ConcurrentLinkedDeque<UUID> currentGamers;
-    protected final CopyOnWriteArrayList<Game.Session> record;
-    public String keyWord;
+
+    protected FBTask task;
 
     public FBGame() {
         super(GameType.FLUTTERING_BLOSSOMS);
-        this.currentGamers = new ConcurrentLinkedDeque<>();
-        this.record = new CopyOnWriteArrayList<>();
-    }
-
-    public UUID getCurrentPlayer() {
-        return currentGamers.peekFirst();
     }
 
     @Override
@@ -40,22 +33,14 @@ public class FBGame extends Game {
                             ),
                     players);
 
-            BroadcastUtils.broadcast(
-                    Constants.PREFIX + "諸君各言行令之字。",
-                    players);
-            CompletableFuture<String> future = new CompletableFuture<>();
-            new FBVote(this, future);
-            this.keyWord = future.get();
-            PoetryUtils.PresetManager.loadPreset(keyWord);
-            BroadcastUtils.broadcast(
-                    Constants.PREFIX + "行令字" + keyWord + "字。",
-                    players);
-
-            players.forEach(currentGamers::offerFirst);
-            Bukkit.getScheduler().runTaskAsynchronously(Main.getPlugin(Main.class),
-                    () -> {
-                        new FBTask(this).run();
-                    });
+            this.task = new FBTask(this);
+            players.forEach(task.currentGamers::offerFirst);
+            Bukkit.getScheduler().runTaskAsynchronously(
+                    Main.getPlugin(Main.class),
+                    task::run
+                    // Do not block GameManager#StartTask.
+                    // Block another thread using Future#get.
+            );
         } catch (Exception ex) {
             ex.printStackTrace();
         }
@@ -64,10 +49,10 @@ public class FBGame extends Game {
     @Override
     public void end() {
         super.end();
-        if (getCurrentPlayer() != null) {
+        if (task.currentGamers.peekFirst() != null) {
             BroadcastUtils.broadcast(
                     Constants.PREFIX +
-                            Bukkit.getOfflinePlayer(getCurrentPlayer()).getName() +
+                            Bukkit.getOfflinePlayer(task.currentGamers.peekFirst()).getName() +
                             " 詞源倒流三峡水。筆陣獨掃千人軍。一時無人能抵！"
                     , players
             );

@@ -3,6 +3,7 @@ package net.pvpin.poetrygame.api;
 import net.pvpin.poetrygame.api.utils.ConfigManager;
 import net.pvpin.poetrygame.api.poetry.PoetryUtils;
 import net.pvpin.poetrygame.game.flutteringblossoms.FBCmd;
+import net.pvpin.poetrygame.game.poetryfilling.PFCmd;
 import net.pvpin.poetrygame.game.poetryidentification.PICmd;
 import net.pvpin.poetrygame.game.poetrywordle.PWCmd;
 import org.bukkit.*;
@@ -16,6 +17,7 @@ public class Main extends JavaPlugin {
     public void onLoad() {
         try {
             Class.forName(PoetryUtils.class.getName());
+            Class.forName(PoetryUtils.PresetManager.class.getName());
         } catch (ClassNotFoundException ignored) {
             // Do nothing.
         }
@@ -30,10 +32,12 @@ public class Main extends JavaPlugin {
         }
         Bukkit.getPluginCommand("flutteringblossoms").setExecutor(new FBCmd());
         Bukkit.getPluginCommand("flutteringblossoms").setTabCompleter(new FBCmd());
-        Bukkit.getPluginCommand("poetryidentification").setExecutor(new PICmd());
-        Bukkit.getPluginCommand("poetryidentification").setTabCompleter(new PICmd());
         Bukkit.getPluginCommand("poetrywordle").setExecutor(new PWCmd());
         Bukkit.getPluginCommand("poetrywordle").setTabCompleter(new PWCmd());
+        Bukkit.getPluginCommand("poetryidentification").setExecutor(new PICmd());
+        Bukkit.getPluginCommand("poetryidentification").setTabCompleter(new PICmd());
+        Bukkit.getPluginCommand("poetryfilling").setExecutor(new PFCmd());
+        Bukkit.getPluginCommand("poetryfilling").setTabCompleter(new PFCmd());
     }
 
 }

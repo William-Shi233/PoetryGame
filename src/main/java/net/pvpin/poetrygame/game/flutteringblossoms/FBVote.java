@@ -6,6 +6,7 @@ import net.pvpin.poetrygame.api.events.flutteringblossom.AsyncFBVoteEvent;
 import net.pvpin.poetrygame.api.utils.BroadcastUtils;
 import net.pvpin.poetrygame.api.utils.ConfigManager;
 import net.pvpin.poetrygame.api.utils.Constants;
+import net.pvpin.poetrygame.game.Game;
 import org.bukkit.Bukkit;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.HandlerList;
@@ -22,15 +23,18 @@ import java.util.stream.Collectors;
  * @author William_Shi
  */
 class FBVote {
-    private FBGame game;
+    private Game game;
     private CompletableFuture<String> future;
     private VoteListener listener;
     private Map<UUID, String> result = new ConcurrentHashMap<>();
 
-    protected FBVote(FBGame game, CompletableFuture<String> future) {
+    protected FBVote(Game game, CompletableFuture<String> future) {
         this.game = game;
         this.future = future;
         this.listener = new VoteListener();
+    }
+
+    protected void schedule() {
         Bukkit.getPluginManager().registerEvents(listener, Main.getPlugin(Main.class));
         // future.completeOnTimeout(getResult(), 10000L, TimeUnit.MILLISECONDS);
         Bukkit.getScheduler().runTaskLaterAsynchronously(Main.getPlugin(Main.class), () -> {
@@ -44,14 +48,14 @@ class FBVote {
             return "花";
         }
         if (result.size() == 1) {
-            return result.entrySet().stream().collect(Collectors.toList()).get(0).getValue();
+            return new ArrayList<>(result.entrySet()).get(0).getValue();
         }
         Map<String, AtomicInteger> temp = new HashMap<>();
         result.forEach((uuid, s) -> {
             var value = temp.containsKey(s) ? temp.get(s).incrementAndGet() : temp.put(s, new AtomicInteger(1));
         });
         List<Map.Entry<String, AtomicInteger>> rankListAll = new ArrayList<>(temp.entrySet());
-        rankListAll.sort((o1, o2) -> ((Integer) o1.getValue().intValue()).compareTo(o2.getValue().intValue()) * (-1));
+        rankListAll.sort((o1, o2) -> Integer.compare(o1.getValue().intValue(), o2.getValue().intValue()) * (-1));
         AsyncFBKeyWordGenEvent customEvent = new AsyncFBKeyWordGenEvent(game, rankListAll.get(0).getKey());
         Bukkit.getPluginManager().callEvent(customEvent);
         return customEvent.getKeyWord();

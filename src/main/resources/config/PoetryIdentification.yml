@@ -3,3 +3,4 @@ minPlayers: 2
 timeBeforeInit: 30000
 timeRound: 60000
 roundNumber: 5
+maxAttempts: 10

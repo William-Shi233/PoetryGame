@@ -1,5 +1,6 @@
 name: PoetryGame
-version: 1.1
+version: 1.2
+api-version: 1.13
 main: net.pvpin.poetrygame.api.Main
 author: William_Shi
 commands:
@@ -9,3 +10,5 @@ commands:
     aliases: [ "pw" ]
   poetryidentification:
     aliases: [ "pi" ]
+  poetryfilling:
+    aliases: [ "pf" ]

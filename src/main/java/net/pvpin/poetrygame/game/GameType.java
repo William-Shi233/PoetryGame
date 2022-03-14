@@ -20,6 +20,11 @@ public enum GameType {
             ConfigManager.PoetryIdentification.MAX_PLAYERS,
             ConfigManager.PoetryIdentification.MIN_PLAYERS,
             ConfigManager.PoetryIdentification.TIME_BEFORE_INIT
+    ),
+    POETRY_FILLING(
+            ConfigManager.PoetryFilling.MAX_PLAYERS,
+            ConfigManager.PoetryFilling.MIN_PLAYERS,
+            ConfigManager.PoetryFilling.TIME_BEFORE_INIT
     );
     private int maxPlayers;
     private int minPlayers;

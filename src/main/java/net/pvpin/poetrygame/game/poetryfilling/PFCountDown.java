@@ -1,4 +1,4 @@
-package net.pvpin.poetrygame.game.poetrywordle;
+package net.pvpin.poetrygame.game.poetryfilling;
 
 import net.md_5.bungee.api.ChatMessageType;
 import net.md_5.bungee.api.chat.TextComponent;
@@ -12,11 +12,11 @@ import org.bukkit.scheduler.BukkitRunnable;
 /**
  * @author William_Shi
  */
-public class PWCountDown extends BukkitRunnable {
+class PFCountDown extends BukkitRunnable {
     private Game game;
-    private PWTask task;
+    private PFTask task;
 
-    protected PWCountDown(Game game, PWTask task) {
+    protected PFCountDown(Game game, PFTask task) {
         this.game = game;
         this.task = task;
     }
@@ -29,7 +29,7 @@ public class PWCountDown extends BukkitRunnable {
         }
         long startTime = task.roundStamp;
         long currentTime = System.currentTimeMillis();
-        long left = ConfigManager.PoetryWordle.TIME_ROUND - (currentTime - startTime);
+        long left = ConfigManager.PoetryFilling.TIME_ROUND - (currentTime - startTime);
         if (left < 0) {
             return;
         }

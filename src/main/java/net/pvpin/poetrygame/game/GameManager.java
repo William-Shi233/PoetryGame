@@ -6,6 +6,7 @@ import net.pvpin.poetrygame.api.events.common.AsyncGameStartEvent;
 import net.pvpin.poetrygame.api.utils.BroadcastUtils;
 import net.pvpin.poetrygame.api.utils.Constants;
 import net.pvpin.poetrygame.game.flutteringblossoms.FBGame;
+import net.pvpin.poetrygame.game.poetryfilling.PFGame;
 import net.pvpin.poetrygame.game.poetryidentification.PIGame;
 import net.pvpin.poetrygame.game.poetrywordle.PWGame;
 import org.bukkit.Bukkit;
@@ -18,7 +19,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 /**
  * @author William_Shi
  */
-public class GameManager {
+public final class GameManager {
     protected static final Map<GameType, List<Game>> GAMES = new ConcurrentHashMap<>(16);
 
     static {
@@ -92,13 +93,18 @@ public class GameManager {
                 GAMES.get(type).add(game);
                 return game;
             }
+            case POETRY_WORDLE: {
+                Game game = new PWGame();
+                GAMES.get(type).add(game);
+                return game;
+            }
             case POETRY_IDENTIFICATION: {
                 Game game = new PIGame();
                 GAMES.get(type).add(game);
                 return game;
             }
-            case POETRY_WORDLE: {
-                Game game = new PWGame();
+            case POETRY_FILLING: {
+                Game game = new PFGame();
                 GAMES.get(type).add(game);
                 return game;
             }

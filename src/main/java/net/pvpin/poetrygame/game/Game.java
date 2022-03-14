@@ -6,6 +6,7 @@ import net.pvpin.poetrygame.api.utils.Constants;
 import org.bukkit.Bukkit;
 
 import java.util.*;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -18,6 +19,7 @@ public abstract class Game {
     public final UUID gameID;
     protected final AtomicInteger status;
     // 0:preparing 1:playing 2:ended
+    protected final CopyOnWriteArrayList<Session> record;
 
     public Game(GameType type) {
         this.type = type;
@@ -25,6 +27,7 @@ public abstract class Game {
         this.createTime = System.currentTimeMillis();
         status = new AtomicInteger(0);
         gameID = UUID.randomUUID();
+        this.record = new CopyOnWriteArrayList<>();
     }
 
     public synchronized void addOrRemovePlayer(UUID player) {
@@ -83,6 +86,10 @@ public abstract class Game {
 
     public List<UUID> getPlayers() {
         return List.copyOf(this.players);
+    }
+
+    public CopyOnWriteArrayList<Session> getRecord() {
+        return record;
     }
 
     public void start() {

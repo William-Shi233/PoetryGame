@@ -1,4 +1,4 @@
-package net.pvpin.poetrygame.game.flutteringblossoms;
+package net.pvpin.poetrygame.game.poetryfilling;
 
 import net.pvpin.poetrygame.api.Main;
 import net.pvpin.poetrygame.api.events.common.AsyncPlayerTipEvent;
@@ -15,15 +15,13 @@ import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
-import java.util.stream.Collectors;
 
 /**
  * @author William_Shi
  */
-public class FBCmd implements CommandExecutor, TabCompleter {
+public class PFCmd implements CommandExecutor, TabCompleter {
     @Override
     public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
         if (!(sender instanceof Player)) {
@@ -33,13 +31,13 @@ public class FBCmd implements CommandExecutor, TabCompleter {
             switch (args[0].toLowerCase()) {
                 case "join": {
                     BroadcastUtils.send(
-                            Constants.PREFIX + "請尋飛花雅集之所。戴侍中之席。",
+                            Constants.PREFIX + "請覽《唐詩三百首》以尋佳句。",
                             ((Player) sender).getUniqueId()
                     );
                     Bukkit.getScheduler().runTaskLaterAsynchronously(Main.getPlugin(Main.class), () -> {
-                        boolean result = GameManager.join(((Player) sender).getUniqueId(), GameType.FLUTTERING_BLOSSOMS);
+                        boolean result = GameManager.join(((Player) sender).getUniqueId(), GameType.POETRY_FILLING);
                         if (result) {
-                            // ,,,
+                            // ...
                         } else {
                             BroadcastUtils.send(
                                     Constants.PREFIX + "尋之不得。足下少安毋躁。",
@@ -51,7 +49,7 @@ public class FBCmd implements CommandExecutor, TabCompleter {
                 }
                 case "quit": {
                     Bukkit.getScheduler().runTaskAsynchronously(Main.getPlugin(Main.class), () -> {
-                        boolean result = GameManager.quit(((Player) sender).getUniqueId(), GameType.FLUTTERING_BLOSSOMS);
+                        boolean result = GameManager.quit(((Player) sender).getUniqueId(), GameType.POETRY_FILLING);
                         if (result) {
                             BroadcastUtils.send(
                                     Constants.PREFIX + "足下離席矣。",
@@ -68,12 +66,13 @@ public class FBCmd implements CommandExecutor, TabCompleter {
                 }
                 case "tip": {
                     Bukkit.getScheduler().runTaskLaterAsynchronously(Main.getPlugin(Main.class), () -> {
-                        FBGame game = (FBGame) GameManager.getGame(((Player) sender).getUniqueId(), GameType.FLUTTERING_BLOSSOMS);
+                        PFGame game = (PFGame) GameManager.getGame(((Player) sender).getUniqueId(), GameType.POETRY_FILLING);
                         if (game == null) {
                             BroadcastUtils.send(
                                     Constants.PREFIX + "足下尚未入席。",
                                     ((Player) sender).getUniqueId()
                             );
+                            return;
                         }
                         if (game.getStatus() != 1) {
                             BroadcastUtils.send(
@@ -81,10 +80,12 @@ public class FBCmd implements CommandExecutor, TabCompleter {
                                     ((Player) sender).getUniqueId()
                             );
                         }
-                        String keyWord = game.task.keyWord;
-                        Map<String, UUID> map = PoetryUtils.PresetManager.PRESETS_CACHE.get(keyWord);
-                        List<String> available = map.keySet().stream().collect(Collectors.toList());
-                        String tip = available.get(ThreadLocalRandom.current().nextInt(available.size()));
+                        String answer = game.task.currentAnswer.replaceAll("\\pP|\\pS|\\pC|\\pN|\\pZ", "");
+                        int index = ThreadLocalRandom.current().nextInt(answer.length());
+                        String idStr = Constants.convertChineseNumbers(index + 1);
+                        String tip = "提示：此詩" +
+                                PoetryUtils.searchFromAll(answer).getAuthor() +
+                                "作。第" + idStr + "字為“ " + answer.charAt(index) + " ”。";
                         AsyncPlayerTipEvent event = new AsyncPlayerTipEvent(game, (Player) sender, tip);
                         Bukkit.getPluginManager().callEvent(event);
                         if (!event.isCancelled()) {

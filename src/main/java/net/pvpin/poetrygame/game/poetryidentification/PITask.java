@@ -11,6 +11,7 @@ import net.pvpin.poetrygame.api.utils.Constants;
 import net.pvpin.poetrygame.api.poetry.PoetryUtils;
 import net.pvpin.poetrygame.game.Game;
 import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
@@ -27,12 +28,16 @@ import java.util.stream.Collectors;
  * @author William_Shi
  */
 class PITask {
-    protected PIGame game;
+    protected String currentQuestion;
+    protected String currentAnswer;
+
+    protected Game game;
+    protected Map<UUID, AtomicInteger> attemptMap = new ConcurrentHashMap<>();
     protected AtomicInteger currentRound = new AtomicInteger(0);
     protected long roundStamp;
     protected AtomicBoolean initNewRound = new AtomicBoolean(true);
 
-    protected PITask(PIGame game) {
+    protected PITask(Game game) {
         this.game = game;
     }
 
@@ -42,28 +47,29 @@ class PITask {
         do {
             if (currentRound.get() == ConfigManager.PoetryIdentification.ROUND_NUMBER) {
                 BroadcastUtils.broadcast(
-                        Constants.PREFIX + "答案：" + game.currentAnswer + "。",
+                        Constants.PREFIX + "答案：" + currentAnswer + "。",
                         game.getPlayers());
                 break;
             }
             if (initNewRound.get()) {
-                if (game.currentAnswer != null) {
+                if (currentAnswer != null) {
                     BroadcastUtils.broadcast(
-                            Constants.PREFIX + "答案：" + game.currentAnswer + "。",
+                            Constants.PREFIX + "答案：" + currentAnswer + "。",
                             game.getPlayers());
                 }
+                currentRound.incrementAndGet();
                 roundStamp = System.currentTimeMillis();
-                int questionLength = currentRound.incrementAndGet() <= 3 ? 5 : 7;
+                attemptMap.clear();
+                int questionLength = currentRound.get() <= 3 ? 5 : 7;
                 Pair<String, String> pair = generateQuestion(questionLength);
-                game.currentAnswer = pair.getValue0();
-                game.currentQuestion = pair.getValue1();
+                currentAnswer = pair.getValue0();
+                currentQuestion = pair.getValue1();
                 initNewRound.set(false);
                 Bukkit.getScheduler().runTaskLaterAsynchronously(Main.getPlugin(Main.class), () -> {
-                    BroadcastUtils.broadcast(
-                            Constants.PREFIX +
-                                    "遴選" + Constants.convertChineseNumbers(game.currentAnswer.length()) +
+                    BroadcastUtils.broadcast(Constants.PREFIX +
+                                    "遴選" + Constants.convertChineseNumbers(currentAnswer.length()) +
                                     "字排字成詩，詩皆出《唐詩三百首》。\n\n" +
-                                    "        " + game.currentQuestion + "\n",
+                                    BroadcastUtils.SPACE.repeat(4) + ChatColor.GOLD + currentQuestion + "\n",
                             game.getPlayers());
                 }, 3L);
             }
@@ -73,30 +79,28 @@ class PITask {
             try {
                 Game.Session result = future.get(ConfigManager.PoetryIdentification.TIME_ROUND - (System.currentTimeMillis() - roundStamp), TimeUnit.MILLISECONDS);
                 HandlerList.unregisterAll(listener);
-                AsyncPIAnswerEvent event = new AsyncPIAnswerEvent(game, game.currentQuestion, game.currentAnswer, result.getContent(), Bukkit.getPlayer(result.getPlayer()));
+                AsyncPIAnswerEvent event = new AsyncPIAnswerEvent(game, currentQuestion, currentAnswer, result.getContent(), Bukkit.getPlayer(result.getPlayer()));
                 Bukkit.getPluginManager().callEvent(event);
                 String stripped = PoetryUtils.strip(result.getContent());
-                game.record.add(result);
+                game.getRecord().add(result);
 
-                if (stripped.equals(PoetryUtils.strip(game.currentAnswer))) {
+                if (stripped.equals(PoetryUtils.strip(currentAnswer))) {
                     result.setCorrect(true);
                     result.setPoem(PoetryUtils.searchFromAll(stripped));
                     this.initNewRound.set(true);
-                    BroadcastUtils.broadcast(
-                            Constants.PREFIX +
+                    BroadcastUtils.broadcast(Constants.PREFIX +
                                     Bukkit.getOfflinePlayer(result.getPlayer()).getName() +
-                                    " 辨出“" + result.getContent().replaceAll("\\pP|\\pS|\\pC|\\pN|\\pZ", "") + "”。",
+                                    " 辨出“" + result.getContent() + "”。",
                             game.getPlayers());
                     continue;
                 }
-                BroadcastUtils.broadcast(
-                        Constants.PREFIX +
+                BroadcastUtils.broadcast(Constants.PREFIX +
                                 Bukkit.getOfflinePlayer(result.getPlayer()).getName() +
-                                " 認定“" + result.getContent().replaceAll("\\pP|\\pS|\\pC|\\pN|\\pZ", "") + "”。非是。",
+                                " 認定“" + result.getContent() + "”。非是。",
                         game.getPlayers());
                 this.initNewRound.set(ConfigManager.PoetryIdentification.TIME_ROUND - (System.currentTimeMillis() - roundStamp) <= 0);
             } catch (InterruptedException | ExecutionException | TimeoutException ex) {
-                AsyncPITimeoutEvent event = new AsyncPITimeoutEvent(game, game.currentQuestion, game.currentAnswer);
+                AsyncPITimeoutEvent event = new AsyncPITimeoutEvent(game, currentQuestion, currentAnswer);
                 Bukkit.getPluginManager().callEvent(event);
                 HandlerList.unregisterAll(listener);
                 this.initNewRound.set(true);
@@ -164,6 +168,17 @@ class PITask {
             }
             if (!(event.getMessage().startsWith("辨詩") || event.getMessage().startsWith("辨诗"))) {
                 return;
+            }
+            if (attemptMap.containsKey(event.getPlayer().getUniqueId())) {
+                int times = attemptMap.get(event.getPlayer().getUniqueId()).incrementAndGet();
+                if (times > ConfigManager.PoetryIdentification.MAX_ATTEMPTS) {
+                    BroadcastUtils.broadcast(
+                            Constants.PREFIX + event.getPlayer().getName() + " 三猜不中的。",
+                            game.getPlayers());
+                    return;
+                }
+            } else {
+                attemptMap.put(event.getPlayer().getUniqueId(), new AtomicInteger(1));
             }
             String poem = event.getMessage().substring(2);
             future.complete(game.new Session(event.getPlayer().getUniqueId(), System.currentTimeMillis(), poem));

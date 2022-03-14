@@ -79,7 +79,7 @@ public class PWCmd implements CommandExecutor, TabCompleter {
                                     ((Player) sender).getUniqueId()
                             );
                         }
-                        String answer = game.currentAnswer.replaceAll("\\pP|\\pS|\\pC|\\pN|\\pZ", "");
+                        String answer = game.task.currentAnswer.replaceAll("\\pP|\\pS|\\pC|\\pN|\\pZ", "");
                         int index = ThreadLocalRandom.current().nextInt(answer.length());
                         String idStr = Constants.convertChineseNumbers(index + 1);
                         String tip = "提示：此詩" +

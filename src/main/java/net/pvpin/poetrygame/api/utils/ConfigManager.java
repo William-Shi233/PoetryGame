@@ -14,6 +14,7 @@ public class ConfigManager {
         Main.getPlugin(Main.class).saveResource("config/FlutteringBlossoms.yml", false);
         Main.getPlugin(Main.class).saveResource("config/PoetryWordle.yml", false);
         Main.getPlugin(Main.class).saveResource("config/PoetryIdentification.yml", false);
+        Main.getPlugin(Main.class).saveResource("config/PoetryFilling.yml", false);
         loadConfig();
     }
 
@@ -29,6 +30,8 @@ public class ConfigManager {
         public static int MAX_PLAYERS;
         public static int MIN_PLAYERS;
         public static int TIME_BEFORE_INIT;
+        public static int TIME_ROUND;
+        public static int ROUND_NUMBER;
         public static int MAX_ATTEMPTS;
     }
 
@@ -38,11 +41,21 @@ public class ConfigManager {
         public static int TIME_BEFORE_INIT;
         public static int TIME_ROUND;
         public static int ROUND_NUMBER;
+        public static int MAX_ATTEMPTS;
+    }
+
+    public static class PoetryFilling {
+        public static int MAX_PLAYERS;
+        public static int MIN_PLAYERS;
+        public static int TIME_BEFORE_INIT;
+        public static int TIME_ROUND;
+        public static int ROUND_NUMBER;
+        public static int MAX_ATTEMPTS;
     }
 
     public static void loadConfig() {
-        File folder = new File(Main.getPlugin(Main.class).getDataFolder(),"config");
-        File flutteringBlossoms = new File(folder,"FlutteringBlossoms.yml");
+        File folder = new File(Main.getPlugin(Main.class).getDataFolder(), "config");
+        File flutteringBlossoms = new File(folder, "FlutteringBlossoms.yml");
         YamlConfiguration fbCfg = YamlConfiguration.loadConfiguration(flutteringBlossoms);
         FlutteringBlossoms.MAX_PLAYERS = fbCfg.getInt("maxPlayers");
         FlutteringBlossoms.MIN_PLAYERS = fbCfg.getInt("minPlayers");
@@ -50,19 +63,31 @@ public class ConfigManager {
         FlutteringBlossoms.TIME_VOTE = fbCfg.getInt("timeVote");
         FlutteringBlossoms.TIME_ROUND = fbCfg.getInt("timeRound");
 
-        File poetryWordle = new File(folder,"PoetryWordle.yml");
+        File poetryWordle = new File(folder, "PoetryWordle.yml");
         YamlConfiguration pwCfg = YamlConfiguration.loadConfiguration(poetryWordle);
         PoetryWordle.MAX_PLAYERS = pwCfg.getInt("maxPlayers");
         PoetryWordle.MIN_PLAYERS = pwCfg.getInt("minPlayers");
         PoetryWordle.TIME_BEFORE_INIT = pwCfg.getInt("timeBeforeInit");
+        PoetryWordle.TIME_ROUND = pwCfg.getInt("timeRound");
+        PoetryWordle.ROUND_NUMBER = pwCfg.getInt("roundNumber");
         PoetryWordle.MAX_ATTEMPTS = pwCfg.getInt("maxAttempts");
 
-        File poetryIdentification = new File(folder,"PoetryIdentification.yml");
+        File poetryIdentification = new File(folder, "PoetryIdentification.yml");
         YamlConfiguration piCfg = YamlConfiguration.loadConfiguration(poetryIdentification);
         PoetryIdentification.MAX_PLAYERS = piCfg.getInt("maxPlayers");
         PoetryIdentification.MIN_PLAYERS = piCfg.getInt("minPlayers");
         PoetryIdentification.TIME_BEFORE_INIT = piCfg.getInt("timeBeforeInit");
         PoetryIdentification.TIME_ROUND = piCfg.getInt("timeRound");
         PoetryIdentification.ROUND_NUMBER = piCfg.getInt("roundNumber");
+        PoetryIdentification.MAX_ATTEMPTS = piCfg.getInt("maxAttempts");
+
+        File poetryFilling = new File(folder, "PoetryFilling.yml");
+        YamlConfiguration pfCfg = YamlConfiguration.loadConfiguration(poetryFilling);
+        PoetryFilling.MAX_PLAYERS = pfCfg.getInt("maxPlayers");
+        PoetryFilling.MIN_PLAYERS = pfCfg.getInt("minPlayers");
+        PoetryFilling.TIME_BEFORE_INIT = pfCfg.getInt("timeBeforeInit");
+        PoetryFilling.TIME_ROUND = pfCfg.getInt("timeRound");
+        PoetryFilling.ROUND_NUMBER = pfCfg.getInt("roundNumber");
+        PoetryFilling.MAX_ATTEMPTS = pfCfg.getInt("maxAttempts");
     }
 }

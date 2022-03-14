@@ -1,6 +1,7 @@
-package net.pvpin.poetrygame.game.poetryidentification;
+package net.pvpin.poetrygame.game.poetryfilling;
 
 import net.pvpin.poetrygame.api.Main;
+import net.pvpin.poetrygame.api.poetry.Poem;
 import net.pvpin.poetrygame.api.utils.BroadcastUtils;
 import net.pvpin.poetrygame.api.utils.Constants;
 import net.pvpin.poetrygame.game.Game;
@@ -9,18 +10,16 @@ import org.bukkit.Bukkit;
 
 import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Collectors;
 
 /**
  * @author William_Shi
  */
-public class PIGame extends Game {
+public class PFGame extends Game {
 
-    protected PITask task;
+    protected PFTask task;
 
-    public PIGame() {
-        super(GameType.POETRY_IDENTIFICATION);
+    public PFGame() {
+        super(GameType.POETRY_FILLING);
     }
 
     @Override
@@ -28,10 +27,10 @@ public class PIGame extends Game {
         super.start();
         BroadcastUtils.broadcast(
                 Constants.PREFIX +
-                        "足下之目视，明足以察秋毫之末乎？",
+                        "《詩》云：“日就月將學有緝熙于光明”。詩詞之記誦不可廢止。傳不習乎？",
                 players);
 
-        this.task = new PITask(this);
+        this.task = new PFTask(this);
         Bukkit.getScheduler().runTaskAsynchronously(
                 Main.getPlugin(Main.class),
                 task::run
@@ -69,7 +68,7 @@ public class PIGame extends Game {
         });
         BroadcastUtils.broadcast(
                 Constants.PREFIX + joiner +
-                        " 辛勤萬卷讀，不負百年眼。",
+                        " 熟讀《唐詩三百首》。",
                 players
         );
     }

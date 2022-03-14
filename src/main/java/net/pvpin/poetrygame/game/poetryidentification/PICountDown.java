@@ -4,6 +4,7 @@ import net.md_5.bungee.api.ChatMessageType;
 import net.md_5.bungee.api.chat.TextComponent;
 import net.pvpin.poetrygame.api.utils.ConfigManager;
 import net.pvpin.poetrygame.api.utils.Constants;
+import net.pvpin.poetrygame.game.Game;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
@@ -12,10 +13,10 @@ import org.bukkit.scheduler.BukkitRunnable;
  * @author William_Shi
  */
 class PICountDown extends BukkitRunnable {
-    private PIGame game;
+    private Game game;
     private PITask task;
 
-    protected PICountDown(PIGame game, PITask task) {
+    protected PICountDown(Game game, PITask task) {
         this.game = game;
         this.task = task;
     }
