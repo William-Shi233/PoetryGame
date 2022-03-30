@@ -1,5 +1,8 @@
 package net.pvpin.poetrygame.game.flutteringblossoms;
 
+import net.md_5.bungee.api.chat.BaseComponent;
+import net.md_5.bungee.api.chat.ClickEvent;
+import net.md_5.bungee.api.chat.TextComponent;
 import net.pvpin.poetrygame.api.Main;
 import net.pvpin.poetrygame.api.events.common.AsyncPlayerTipEvent;
 import net.pvpin.poetrygame.api.utils.BroadcastUtils;
@@ -14,6 +17,7 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -39,7 +43,7 @@ public class FBCmd implements CommandExecutor, TabCompleter {
                     Bukkit.getScheduler().runTaskLaterAsynchronously(Main.getPlugin(Main.class), () -> {
                         boolean result = GameManager.join(((Player) sender).getUniqueId(), GameType.FLUTTERING_BLOSSOMS);
                         if (result) {
-                            // ,,,
+                            // ...
                         } else {
                             BroadcastUtils.send(
                                     Constants.PREFIX + "尋之不得。足下少安毋躁。",
@@ -83,16 +87,18 @@ public class FBCmd implements CommandExecutor, TabCompleter {
                         }
                         String keyWord = game.task.keyWord;
                         Map<String, UUID> map = PoetryUtils.PresetManager.PRESETS_CACHE.get(keyWord);
-                        List<String> available = map.keySet().stream().collect(Collectors.toList());
+                        List<String> available = new ArrayList<>(map.keySet());
                         String tip = available.get(ThreadLocalRandom.current().nextInt(available.size()));
-                        AsyncPlayerTipEvent event = new AsyncPlayerTipEvent(game, (Player) sender, tip);
+                        BaseComponent component = new TextComponent(Constants.PREFIX);
+                        TextComponent tipComponent = new TextComponent(tip);
+                        tipComponent.setUnderlined(true);
+                        tipComponent.setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "行令 " + tip));
+                        component.addExtra(tipComponent);
+                        AsyncPlayerTipEvent event = new AsyncPlayerTipEvent(game, (Player) sender, component);
                         Bukkit.getPluginManager().callEvent(event);
                         if (!event.isCancelled()) {
-                            tip = event.getTip();
-                            BroadcastUtils.send(
-                                    Constants.PREFIX + tip,
-                                    ((Player) sender).getUniqueId()
-                            );
+                            component = event.getTip();
+                            BroadcastUtils.send(component, ((Player) sender).getUniqueId());
                         }
                     }, 1L);
                     break;

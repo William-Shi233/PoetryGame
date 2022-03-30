@@ -26,6 +26,10 @@ public class BroadcastUtils {
         broadcast(msg, List.of(uuid));
     }
 
+    public static void send(BaseComponent msg, UUID uuid) {
+        broadcast(msg, List.of(uuid));
+    }
+
     public static void broadcast(String msg, List<UUID> uuids) {
         broadcast(new TextComponent(msg), uuids);
     }

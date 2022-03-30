@@ -6,6 +6,7 @@ import net.pvpin.poetrygame.api.events.common.AsyncGameStartEvent;
 import net.pvpin.poetrygame.api.utils.BroadcastUtils;
 import net.pvpin.poetrygame.api.utils.Constants;
 import net.pvpin.poetrygame.game.flutteringblossoms.FBGame;
+import net.pvpin.poetrygame.game.mix.MixGame;
 import net.pvpin.poetrygame.game.poetryfilling.PFGame;
 import net.pvpin.poetrygame.game.poetryidentification.PIGame;
 import net.pvpin.poetrygame.game.poetrywordle.PWGame;
@@ -15,6 +16,7 @@ import org.bukkit.scheduler.BukkitRunnable;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.stream.Collectors;
 
 /**
  * @author William_Shi
@@ -44,22 +46,39 @@ public final class GameManager {
         return null;
     }
 
-    public static boolean join(UUID player, GameType type) {
+    public static boolean join(UUID player, GameType type, String... exact) {
         List<Game> gamesList = GAMES.get(type);
         if (gamesList.stream().anyMatch(game -> game.players.contains(player))) {
             return false;
         }
-        if (gamesList.stream().anyMatch(game -> game.status.intValue() == 0)) {
-            for (Game game : gamesList) {
-                if (game.status.intValue() == 0 && game.players.size() < game.type.getMaxPlayers()) {
-                    game.addOrRemovePlayer(player);
-                    return true;
-                }
+        if (type != GameType.MIX) {
+            List<Game> available = gamesList.stream()
+                    .filter(game -> game.status.intValue() == 0)
+                    .filter(game -> game.players.size() < game.getMaxPlayers())
+                    .collect(Collectors.toList());
+            if (!available.isEmpty()) {
+                available.get(0).addOrRemovePlayer(player);
+                return true;
             }
+            Game newGame = createGame(type);
+            newGame.addOrRemovePlayer(player);
+            return true;
+        } else {
+            List<Game> available = gamesList.stream()
+                    .map(game -> (MixGame) game)
+                    .filter(game -> Objects.equals(game.getType(), exact[0]))
+                    .filter(game -> game.status.intValue() == 0)
+                    .filter(game -> game.players.size() < game.getMaxPlayers())
+                    .collect(Collectors.toList());
+            if (!available.isEmpty()) {
+                available.get(0).addOrRemovePlayer(player);
+                return true;
+            }
+            Game newGame = new MixGame(exact[0]);
+            GAMES.get(type).add(newGame);
+            newGame.addOrRemovePlayer(player);
+            return true;
         }
-        Game newGame = createGame(type);
-        newGame.addOrRemovePlayer(player);
-        return true;
     }
 
     public static boolean quit(UUID player, GameType type) {
@@ -70,6 +89,7 @@ public final class GameManager {
         Game current = getGame(player, type);
         if (current.status.intValue() == 0) {
             current.addOrRemovePlayer(player);
+            return true;
         } else if (current.status.intValue() == 1 && current.players.size() == 1) {
             current.end();
             AsyncGameEndEvent event = new AsyncGameEndEvent(current, AsyncGameEndEvent.EndReason.PLAYER_QUIT);
@@ -83,7 +103,6 @@ public final class GameManager {
         } else {
             return false;
         }
-        return true;
     }
 
     public static synchronized Game createGame(GameType type) {
@@ -121,8 +140,8 @@ class StartTask extends BukkitRunnable {
         GameManager.GAMES.forEach((type, games) -> {
             games.forEach(game -> {
                 if (game.status.intValue() == 0
-                        && game.players.size() >= game.type.getMinPlayers()
-                        && System.currentTimeMillis() - game.createTime > game.type.getTimeBeforeInit()) {
+                        && game.players.size() >= game.getMinPlayers()
+                        && System.currentTimeMillis() - game.createTime > game.getTimeBeforeInit()) {
                     AsyncGameStartEvent event = new AsyncGameStartEvent(game);
                     Bukkit.getPluginManager().callEvent(event);
                     if (!event.isCancelled()) {
@@ -141,12 +160,13 @@ class EndTask extends BukkitRunnable {
         List<Game> tempEnded = new ArrayList<>(16);
         GameManager.GAMES.forEach((type, games) -> {
             games.forEach(game -> {
-                if (game.players.size() < game.type.getMinPlayers()
-                        && System.currentTimeMillis() - game.createTime > game.type.getTimeBeforeInit()) {
-                    tempNoPlayer.add(game);
-                }
                 if (game.status.intValue() == 2) {
                     tempEnded.add(game);
+                    return;
+                }
+                if (game.status.intValue() == 0 && game.players.size() < game.getMinPlayers()
+                        && System.currentTimeMillis() - game.createTime > game.getTimeBeforeInit()) {
+                    tempNoPlayer.add(game);
                 }
             });
         });

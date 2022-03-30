@@ -92,6 +92,18 @@ public abstract class Game {
         return record;
     }
 
+    public int getMaxPlayers() {
+        return this.type.getMaxPlayers();
+    }
+
+    public int getMinPlayers() {
+        return this.type.getMinPlayers();
+    }
+
+    public long getTimeBeforeInit() {
+        return this.type.getTimeBeforeInit();
+    }
+
     public void start() {
         status.incrementAndGet();
     }

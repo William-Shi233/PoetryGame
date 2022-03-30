@@ -2,34 +2,27 @@ package net.pvpin.poetrygame.dev;
 
 import com.google.gson.Gson;
 import net.pvpin.poetrygame.api.poetry.Poem;
-import net.pvpin.poetrygame.api.poetry.PoetryUtils;
+import org.nlpcn.commons.lang.jianfan.JianFan;
 
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
+import java.io.*;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.zip.GZIPOutputStream;
 
 /**
  * @author William_Shi
  */
 public class Collect {
     public static final File COLLECT_OUTPUT = new File("C:/Users/williamshi/Documents/Code/PoetryGame/src/main/resources/all.json");
+    public static final File TANG_INPUT = new File("C:/Users/williamshi/Documents/Code/PoetryGame/src/main/resources/cache/tangtops.json");
+    public static final File TANG_OUTPUT = new File("C:/Users/williamshi/Documents/Code/PoetryGame/src/main/resources/poetry/tangtops.gz");
 
     public static void main(String[] args) throws Exception {
-        var str = new Gson().toJson(collectAll()
-                .stream().filter(map -> {
-                    var paras = map.getParagraphs();
-                    return paras.stream().anyMatch(para -> {
-                        var stripped = PoetryUtils.cut(para).stream()
-                                .filter(s -> (!s.isBlank()) && (!s.isEmpty()))
-                                .filter(s -> s.length() < 5)
-                                .collect(Collectors.toList());
-                        return stripped.stream().anyMatch(s -> s.contains("花"));
-                    });
-                }).collect(Collectors.toList()), List.class);
-        var writer = new BufferedWriter(new FileWriter(COLLECT_OUTPUT));
+        var writer = new BufferedWriter(new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(TANG_OUTPUT)), StandardCharsets.UTF_8));
+        var str = Files.readString(Paths.get(TANG_INPUT.toURI()), StandardCharsets.UTF_8);
         writer.write(str);
         writer.close();
     }

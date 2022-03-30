@@ -1,6 +1,7 @@
 package net.pvpin.poetrygame.game.poetrywordle;
 
 import net.md_5.bungee.api.ChatColor;
+import net.md_5.bungee.api.chat.TextComponent;
 import net.pvpin.poetrygame.api.Main;
 import net.pvpin.poetrygame.api.events.poetrywordle.AsyncPWAnswerEvent;
 import net.pvpin.poetrygame.api.events.poetrywordle.AsyncPWQuestionGenEvent;
@@ -27,9 +28,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 /**
  * @author William_Shi
  */
-class PWTask {
+public class PWTask {
     protected String currentAnswer;
     protected Poem currentAnswerPoem;
+    public int rounds = ConfigManager.PoetryWordle.ROUND_NUMBER;
 
     protected Game game;
     protected Map<UUID, AtomicInteger> attemptMap = new ConcurrentHashMap<>();
@@ -37,25 +39,24 @@ class PWTask {
     protected long roundStamp;
     protected AtomicBoolean initNewRound = new AtomicBoolean(true);
 
-    protected PWTask(Game game) {
+    public PWTask(Game game) {
         this.game = game;
     }
 
-    protected void run() {
-        new PWCountDown(game, this)
+    public void run() {
+        var countDownTask = new PWCountDown(game, this)
                 .runTaskTimerAsynchronously(Main.getPlugin(Main.class), 10L, 10L);
         do {
-            if (currentRound.get() == ConfigManager.PoetryWordle.ROUND_NUMBER) {
-                BroadcastUtils.broadcast(
-                        Constants.PREFIX + "答案：" + currentAnswer + "。",
-                        game.getPlayers());
-                break;
-            }
             if (initNewRound.get()) {
                 if (currentAnswer != null) {
-                    BroadcastUtils.broadcast(
-                            Constants.PREFIX + "答案：" + currentAnswer + "。",
-                            game.getPlayers());
+                    TextComponent component = new TextComponent(Constants.PREFIX);
+                    component.addExtra(new TextComponent("答案："));
+                    component.addExtra(BroadcastUtils.generatePoemComponent(currentAnswer, currentAnswerPoem));
+                    component.addExtra(new TextComponent("。"));
+                    BroadcastUtils.broadcast(component, game.getPlayers());
+                    if (currentRound.get() == rounds) {
+                        break;
+                    }
                 }
                 currentRound.incrementAndGet();
                 roundStamp = System.currentTimeMillis();
@@ -66,6 +67,7 @@ class PWTask {
                 AsyncPWQuestionGenEvent event = new AsyncPWQuestionGenEvent(game, currentAnswer);
                 Bukkit.getPluginManager().callEvent(event);
                 currentAnswer = event.getAnswer();
+                currentAnswerPoem = ranPoem;
                 Bukkit.getScheduler().runTaskLaterAsynchronously(Main.getPlugin(Main.class), () -> {
                     BroadcastUtils.broadcast(
                             Constants.PREFIX +
@@ -108,7 +110,8 @@ class PWTask {
                 Bukkit.getPluginManager().callEvent(customEvent);
                 this.initNewRound.set(true);
             }
-        } while ((currentRound.get() <= ConfigManager.PoetryWordle.ROUND_NUMBER) && game.getStatus() == 1);
+        } while ((currentRound.get() <= rounds) && game.getStatus() == 1);
+        countDownTask.cancel();
         Bukkit.getScheduler().runTaskLaterAsynchronously(Main.getPlugin(Main.class), () -> {
             game.end();
         }, 5L);

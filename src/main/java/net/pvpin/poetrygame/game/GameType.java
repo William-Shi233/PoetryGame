@@ -25,26 +25,31 @@ public enum GameType {
             ConfigManager.PoetryFilling.MAX_PLAYERS,
             ConfigManager.PoetryFilling.MIN_PLAYERS,
             ConfigManager.PoetryFilling.TIME_BEFORE_INIT
+    ),
+    MIX(
+            Integer.MAX_VALUE,
+            Integer.MIN_VALUE,
+            Long.MAX_VALUE
     );
     private int maxPlayers;
     private int minPlayers;
     private long timeBeforeInit;
 
-    private GameType(int maxPlayers, int minPlayers, long timeBeforeInit) {
+    GameType(int maxPlayers, int minPlayers, long timeBeforeInit) {
         this.maxPlayers = maxPlayers;
         this.minPlayers = minPlayers;
         this.timeBeforeInit = timeBeforeInit;
     }
 
-    public int getMaxPlayers() {
+    protected int getMaxPlayers() {
         return maxPlayers;
     }
 
-    public int getMinPlayers() {
+    protected int getMinPlayers() {
         return minPlayers;
     }
 
-    public long getTimeBeforeInit() {
+    protected long getTimeBeforeInit() {
         return timeBeforeInit;
     }
 }

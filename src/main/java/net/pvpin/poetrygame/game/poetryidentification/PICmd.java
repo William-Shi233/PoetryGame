@@ -1,5 +1,7 @@
 package net.pvpin.poetrygame.game.poetryidentification;
 
+import net.md_5.bungee.api.chat.BaseComponent;
+import net.md_5.bungee.api.chat.TextComponent;
 import net.pvpin.poetrygame.api.Main;
 import net.pvpin.poetrygame.api.events.common.AsyncPlayerTipEvent;
 import net.pvpin.poetrygame.api.utils.BroadcastUtils;
@@ -82,14 +84,13 @@ public class PICmd implements CommandExecutor, TabCompleter {
                         int index = ThreadLocalRandom.current().nextInt(answer.length());
                         String idStr = Constants.convertChineseNumbers(index + 1);
                         String tip = "提示：第" + idStr + "字為“ " + answer.charAt(index) + " ”。";
-                        AsyncPlayerTipEvent event = new AsyncPlayerTipEvent(game, (Player) sender, tip);
+                        BaseComponent component = new TextComponent(Constants.PREFIX);
+                        component.addExtra(new TextComponent(tip));
+                        AsyncPlayerTipEvent event = new AsyncPlayerTipEvent(game, (Player) sender, component);
                         Bukkit.getPluginManager().callEvent(event);
                         if (!event.isCancelled()) {
-                            tip = event.getTip();
-                            BroadcastUtils.send(
-                                    Constants.PREFIX + tip,
-                                    ((Player) sender).getUniqueId()
-                            );
+                            component = event.getTip();
+                            BroadcastUtils.send(component, ((Player) sender).getUniqueId());
                         }
                     }, 1L);
                     break;

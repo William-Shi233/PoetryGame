@@ -1,0 +1,21 @@
+default:
+  maxPlayers: 10
+  minPlayers: 2
+  timeBeforeInit: 30000
+  command: "mixed"
+  rounds:
+    - "PoetryFilling"
+    - "PoetryIdentification"
+    - "FlutteringBlossoms"
+
+"漫天飛花":
+  maxPlayers: 10
+  minPlayers: 2
+  timeBeforeInit: 3000
+  command: "blossoms"
+  rounds:
+    - "FlutteringBlossoms"
+    - "FlutteringBlossoms"
+    - "FlutteringBlossoms"
+    - "FlutteringBlossoms"
+    - "FlutteringBlossoms"

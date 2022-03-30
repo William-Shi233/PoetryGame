@@ -1,10 +1,14 @@
 package net.pvpin.poetrygame.api.utils;
 
 import net.pvpin.poetrygame.api.Main;
+import net.pvpin.poetrygame.game.mix.MixCommand;
+import org.bukkit.configuration.MemorySection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 
 import java.io.File;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * @author William_Shi
@@ -15,6 +19,7 @@ public class ConfigManager {
         Main.getPlugin(Main.class).saveResource("config/PoetryWordle.yml", false);
         Main.getPlugin(Main.class).saveResource("config/PoetryIdentification.yml", false);
         Main.getPlugin(Main.class).saveResource("config/PoetryFilling.yml", false);
+        Main.getPlugin(Main.class).saveResource("config/Mix.yml", false);
         loadConfig();
     }
 
@@ -53,6 +58,10 @@ public class ConfigManager {
         public static int MAX_ATTEMPTS;
     }
 
+    public static class Mix {
+        public static Map<String, MemorySection> TYPES = new HashMap<>(16);
+    }
+
     public static void loadConfig() {
         File folder = new File(Main.getPlugin(Main.class).getDataFolder(), "config");
         File flutteringBlossoms = new File(folder, "FlutteringBlossoms.yml");
@@ -89,5 +98,12 @@ public class ConfigManager {
         PoetryFilling.TIME_ROUND = pfCfg.getInt("timeRound");
         PoetryFilling.ROUND_NUMBER = pfCfg.getInt("roundNumber");
         PoetryFilling.MAX_ATTEMPTS = pfCfg.getInt("maxAttempts");
+
+        File mix = new File(folder, "Mix.yml");
+        YamlConfiguration mixCfg = YamlConfiguration.loadConfiguration(mix);
+        mixCfg.getKeys(false).forEach(str -> {
+            Mix.TYPES.put(str, (MemorySection) mixCfg.get(str));
+            MixCommand.registerCommand(str, (String) ((MemorySection) mixCfg.get(str)).get("command"));
+        });
     }
 }

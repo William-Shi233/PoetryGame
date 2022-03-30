@@ -34,7 +34,6 @@ public class FBGame extends Game {
                     players);
 
             this.task = new FBTask(this);
-            players.forEach(task.currentGamers::offerFirst);
             Bukkit.getScheduler().runTaskAsynchronously(
                     Main.getPlugin(Main.class),
                     task::run
@@ -53,8 +52,8 @@ public class FBGame extends Game {
             BroadcastUtils.broadcast(
                     Constants.PREFIX +
                             Bukkit.getOfflinePlayer(task.currentGamers.peekFirst()).getName() +
-                            " 詞源倒流三峡水。筆陣獨掃千人軍。一時無人能抵！"
-                    , players
+                            " 詞源倒流三峡水。筆陣獨掃千人軍。一時無人能抵！",
+                    players
             );
         }
     }

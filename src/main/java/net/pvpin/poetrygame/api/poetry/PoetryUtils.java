@@ -11,6 +11,8 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
+import java.util.zip.GZIPInputStream;
+import java.util.zip.GZIPOutputStream;
 
 /**
  * @author William_Shi
@@ -20,23 +22,25 @@ public class PoetryUtils {
     public static final List<Poem> TANG_TOPS = new ArrayList<>(512);
 
     static {
-        Gson gson = new Gson();
-        ((List<Map<String, Object>>) gson.fromJson(new InputStreamReader(
-                Main.getPlugin(Main.class).getResource("rank.json"),
-                StandardCharsets.UTF_8
-        ), List.class))
-                .stream()
-                .map(Poem::deserialize)
-                .peek(Poem::getCutParagraphs)
-                .forEach(poem -> ALL_POEMS.put(poem.getId(), poem));
-        ((List<Map<String, Object>>) gson.fromJson(new InputStreamReader(
-                Main.getPlugin(Main.class).getResource("tangtop.json"),
-                StandardCharsets.UTF_8
-        ), List.class))
-                .stream()
-                .map(Poem::deserialize)
-                .peek(Poem::getCutParagraphs)
-                .forEach(TANG_TOPS::add);
+        try {
+            Gson gson = new Gson();
+            ((List<Map<String, Object>>) gson.fromJson(new InputStreamReader(
+                    new GZIPInputStream(Main.getPlugin(Main.class).getResource("poetry/rank.gz")), StandardCharsets.UTF_8
+            ), List.class))
+                    .stream()
+                    .map(Poem::deserialize)
+                    .peek(Poem::getCutParagraphs)
+                    .forEach(poem -> ALL_POEMS.put(poem.getId(), poem));
+            ((List<Map<String, Object>>) gson.fromJson(new InputStreamReader(
+                    new GZIPInputStream(Main.getPlugin(Main.class).getResource("poetry/tangtops.gz")), StandardCharsets.UTF_8
+            ), List.class))
+                    .stream()
+                    .map(Poem::deserialize)
+                    .peek(Poem::getCutParagraphs)
+                    .forEach(TANG_TOPS::add);
+        } catch (IOException ex) {
+            ex.printStackTrace();
+        }
     }
 
     public static Poem searchFromAll(String poem) {
@@ -154,11 +158,11 @@ public class PoetryUtils {
             if (PRESETS.containsKey(keyWord)) {
                 return;
             }
-            InputStream stream = Main.getPlugin(Main.class).getResource("preset/" + keyWord + ".json");
+            InputStream stream = Main.getPlugin(Main.class).getResource("preset/" + keyWord + ".gz");
             if (stream != null) {
                 PRESETS.put(keyWord, ((List<List<Double>>)
                                 new Gson().fromJson(
-                                        new InputStreamReader(stream, StandardCharsets.UTF_8), List.class
+                                        new InputStreamReader(new GZIPInputStream(stream), StandardCharsets.UTF_8), List.class
                                 )
                         ).stream()
                                 .map(list -> new UUID(list.get(0).longValue(), list.get(1).longValue()))
@@ -167,11 +171,11 @@ public class PoetryUtils {
                 generateCache(keyWord);
                 return;
             } else {
-                File file = new File(folder, keyWord + ".json");
+                File file = new File(folder, keyWord + ".gz");
                 if (file.exists()) {
                     PRESETS.put(keyWord, ((List<List<Double>>)
                                     new Gson().fromJson(
-                                            new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8), List.class
+                                            new InputStreamReader(new GZIPInputStream(new FileInputStream(file)), StandardCharsets.UTF_8), List.class
                                     )
                             ).stream()
                                     .map(list -> new UUID(list.get(0).longValue(), list.get(1).longValue()))
@@ -181,7 +185,7 @@ public class PoetryUtils {
                     return;
                 }
             }
-            File file = new File(folder, keyWord + ".json");
+            File file = new File(folder, keyWord + ".gz");
             file.createNewFile();
             List<UUID> result = new ArrayList<>(1024);
             ALL_POEMS.entrySet().stream().forEach(entry -> {
@@ -198,7 +202,7 @@ public class PoetryUtils {
                             .collect(Collectors.toList()),
                     List.class
             );
-            BufferedWriter writer = new BufferedWriter(new FileWriter(file, StandardCharsets.UTF_8));
+            BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(file)), StandardCharsets.UTF_8));
             writer.write(str);
             writer.close();
         }

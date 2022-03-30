@@ -4,15 +4,20 @@ import com.google.gson.*;
 import net.pvpin.poetrygame.api.poetry.Poem;
 
 import java.io.*;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.zip.GZIPOutputStream;
 
 /**
  * @author William_Shi
  */
 public class Rank {
     public static final int AMOUNT = 30000; // Select Top 10000 poems in the list.
-    public static final String RANK_OUTPUT = "C:/Users/williamshi/Documents/Code/PoetryGame/src/main/resources/rank.json";
+    public static final String RANK_OUTPUT_CACHE = "C:/Users/williamshi/Documents/Code/PoetryGame/src/main/resources/cache/rank.json";
+    public static final String RANK_OUTPUT_ZIP = "C:/Users/williamshi/Documents/Code/PoetryGame/src/main/resources/poetry/rank.gz";
     public static final String POEMS_DIR = "C:/Users/williamshi/Documents/Code/PoetryGame/chinese-poetry-master/json";
     public static final String RANKS_DIR = "C:/Users/williamshi/Documents/Code/PoetryGame/chinese-poetry-master/rank/poet";
 
@@ -44,11 +49,13 @@ public class Rank {
         rankListTops.addAll(Collect.collectChuCi());
         rankListTops.addAll(Collect.collectShiJing());
         var str = gson.toJson(rankListTops, List.class);
-        var outputFile = new File(RANK_OUTPUT);
-        outputFile.createNewFile();
-        var writer = new BufferedWriter(new FileWriter(outputFile));
-        writer.write(str);
-        writer.close();
+        new File(RANK_OUTPUT_CACHE).createNewFile();
+        Files.writeString(Paths.get(RANK_OUTPUT_CACHE), str, StandardCharsets.UTF_8);
+        var outputFileZip = new File(RANK_OUTPUT_ZIP);
+        outputFileZip.createNewFile();
+        var zipWriter = new BufferedWriter(new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(outputFileZip)), StandardCharsets.UTF_8));
+        zipWriter.write(str);
+        zipWriter.close();
     }
 
     public static List<Poem> getTops(int amount) throws Exception {

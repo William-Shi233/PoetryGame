@@ -1,5 +1,6 @@
 package net.pvpin.poetrygame.game.poetryidentification;
 
+import net.md_5.bungee.api.chat.TextComponent;
 import net.pvpin.poetrygame.api.Main;
 import net.pvpin.poetrygame.api.events.poetryidentification.AsyncPIAnswerEvent;
 import net.pvpin.poetrygame.api.events.poetryidentification.AsyncPIQuestionGenEvent;
@@ -27,9 +28,11 @@ import java.util.stream.Collectors;
 /**
  * @author William_Shi
  */
-class PITask {
+public class PITask {
     protected String currentQuestion;
     protected String currentAnswer;
+    protected Poem currentAnswerPoem;
+    public int rounds = ConfigManager.PoetryIdentification.ROUND_NUMBER;
 
     protected Game game;
     protected Map<UUID, AtomicInteger> attemptMap = new ConcurrentHashMap<>();
@@ -37,25 +40,24 @@ class PITask {
     protected long roundStamp;
     protected AtomicBoolean initNewRound = new AtomicBoolean(true);
 
-    protected PITask(Game game) {
+    public PITask(Game game) {
         this.game = game;
     }
 
-    protected void run() {
-        new PICountDown(game, this)
+    public void run() {
+        var countDownTask = new PICountDown(game, this)
                 .runTaskTimerAsynchronously(Main.getPlugin(Main.class), 10L, 10L);
         do {
-            if (currentRound.get() == ConfigManager.PoetryIdentification.ROUND_NUMBER) {
-                BroadcastUtils.broadcast(
-                        Constants.PREFIX + "答案：" + currentAnswer + "。",
-                        game.getPlayers());
-                break;
-            }
             if (initNewRound.get()) {
                 if (currentAnswer != null) {
-                    BroadcastUtils.broadcast(
-                            Constants.PREFIX + "答案：" + currentAnswer + "。",
-                            game.getPlayers());
+                    TextComponent component = new TextComponent(Constants.PREFIX);
+                    component.addExtra(new TextComponent("答案："));
+                    component.addExtra(BroadcastUtils.generatePoemComponent(currentAnswer, currentAnswerPoem));
+                    component.addExtra(new TextComponent("。"));
+                    BroadcastUtils.broadcast(component, game.getPlayers());
+                    if (currentRound.get() == rounds) {
+                        break;
+                    }
                 }
                 currentRound.incrementAndGet();
                 roundStamp = System.currentTimeMillis();
@@ -64,6 +66,7 @@ class PITask {
                 Pair<String, String> pair = generateQuestion(questionLength);
                 currentAnswer = pair.getValue0();
                 currentQuestion = pair.getValue1();
+                currentAnswerPoem = PoetryUtils.searchFromAll(currentAnswer);
                 initNewRound.set(false);
                 Bukkit.getScheduler().runTaskLaterAsynchronously(Main.getPlugin(Main.class), () -> {
                     BroadcastUtils.broadcast(Constants.PREFIX +
@@ -105,7 +108,8 @@ class PITask {
                 HandlerList.unregisterAll(listener);
                 this.initNewRound.set(true);
             }
-        } while ((currentRound.get() <= ConfigManager.PoetryIdentification.ROUND_NUMBER) && game.getStatus() == 1);
+        } while ((currentRound.get() <= rounds) && game.getStatus() == 1);
+        countDownTask.cancel();
         Bukkit.getScheduler().runTaskLaterAsynchronously(Main.getPlugin(Main.class), () -> {
             game.end();
         }, 5L);

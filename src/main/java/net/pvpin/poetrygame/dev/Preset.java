@@ -5,8 +5,10 @@ import net.pvpin.poetrygame.api.poetry.Poem;
 import org.nlpcn.commons.lang.jianfan.JianFan;
 
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.zip.GZIPOutputStream;
 
 /**
  * @author William_Shi
@@ -38,9 +40,9 @@ public class Preset {
                     result.add(List.of(poem.getId().getMostSignificantBits(), poem.getId().getLeastSignificantBits()));
                 });
                 var str = gson.toJson(result, List.class);
-                var outputFile = new File(PRESET_OUTPUT_DIR, key + ".json");
+                var outputFile = new File(PRESET_OUTPUT_DIR, key + ".gz");
                 outputFile.createNewFile();
-                var writer = new BufferedWriter(new FileWriter(outputFile));
+                var writer = new BufferedWriter(new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(outputFile)), StandardCharsets.UTF_8));
                 writer.write(str);
                 writer.close();
             } catch (IOException ignored) {

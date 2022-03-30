@@ -1,5 +1,7 @@
 package net.pvpin.poetrygame.api.events.common;
 
+import net.md_5.bungee.api.chat.BaseComponent;
+import net.md_5.bungee.api.chat.TextComponent;
 import net.pvpin.poetrygame.game.Game;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Cancellable;
@@ -13,14 +15,21 @@ public class AsyncPlayerTipEvent extends Event implements Cancellable {
     private static final HandlerList handlers = new HandlerList();
     protected Game game;
     protected Player player;
-    protected String tip;
+    protected BaseComponent tip;
     protected boolean cancelled = false;
+
+    public AsyncPlayerTipEvent(Game game, Player player, BaseComponent tip) {
+        super(true);
+        this.game = game;
+        this.player = player;
+        this.tip = tip;
+    }
 
     public AsyncPlayerTipEvent(Game game, Player player, String tip) {
         super(true);
         this.game = game;
         this.player = player;
-        this.tip = tip;
+        this.tip = new TextComponent(tip);
     }
 
     @Override
@@ -50,11 +59,11 @@ public class AsyncPlayerTipEvent extends Event implements Cancellable {
         return player;
     }
 
-    public String getTip() {
+    public BaseComponent getTip() {
         return tip;
     }
 
-    public void setTip(String tip) {
+    public void setTip(BaseComponent tip) {
         this.tip = tip;
     }
 }

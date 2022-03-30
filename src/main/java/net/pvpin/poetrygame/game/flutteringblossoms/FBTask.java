@@ -26,7 +26,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 /**
  * @author William_Shi
  */
-class FBTask {
+public class FBTask {
     protected final ConcurrentLinkedDeque<UUID> currentGamers = new ConcurrentLinkedDeque<>();
     public String keyWord;
 
@@ -34,11 +34,12 @@ class FBTask {
     protected long roundStamp;
     protected AtomicBoolean initNewRound = new AtomicBoolean(true);
 
-    protected FBTask(Game game) {
+    public FBTask(Game game) {
         this.game = game;
+        game.getPlayers().forEach(currentGamers::offerFirst);
     }
 
-    protected void run() {
+    public void run() {
         try {
             BroadcastUtils.broadcast(
                     Constants.PREFIX + "諸君各言行令之字。",
@@ -51,26 +52,27 @@ class FBTask {
             BroadcastUtils.broadcast(
                     Constants.PREFIX + "行令字" + keyWord + "字。",
                     game.getPlayers());
-            new FBCountDown(game, this)
-                    .runTaskTimerAsynchronously(Main.getPlugin(Main.class), 10L, 10L);
         } catch (Exception ex) {
             ex.printStackTrace();
         }
-
+        var countDownTask = new FBCountDown(game, this)
+                .runTaskTimerAsynchronously(Main.getPlugin(Main.class), 10L, 10L);
         while (game.getStatus() == 1) {
             if (currentGamers.size() <= 1) {
-                game.end();
+                Bukkit.getScheduler().runTaskLaterAsynchronously(Main.getPlugin(Main.class), () -> {
+                    game.end();
+                }, 5L);
                 return;
             }
             if (initNewRound.get()) {
                 roundStamp = System.currentTimeMillis();
                 BroadcastUtils.broadcast(Constants.PREFIX + "依次第， " +
-                                Bukkit.getOfflinePlayer(currentGamers.peekFirst()).getName() + " 行令。",
+                                Bukkit.getOfflinePlayer(getCurrent()).getName() + " 行令。",
                         game.getPlayers());
                 initNewRound.set(false);
             }
             CompletableFuture<Game.Session> future = new CompletableFuture<>();
-            FBListener listener = new FBListener(currentGamers.peekFirst(), future);
+            FBListener listener = new FBListener(getCurrent(), future);
             Bukkit.getPluginManager().registerEvents(listener, Main.getPlugin(Main.class));
             try {
                 Game.Session session = future.get(ConfigManager.FlutteringBlossoms.TIME_ROUND - (System.currentTimeMillis() - roundStamp), TimeUnit.MILLISECONDS);
@@ -87,10 +89,10 @@ class FBTask {
                         kickCurrent();
                         continue;
                     }
-                    AsyncFBAnswerEvent customEvent = new AsyncFBAnswerEvent(game, Bukkit.getPlayer(currentGamers.peekFirst()), session.getContent(), AsyncFBAnswerEvent.Result.REDUNDANT_POEM);
+                    AsyncFBAnswerEvent customEvent = new AsyncFBAnswerEvent(game, Bukkit.getPlayer(getCurrent()), session.getContent(), AsyncFBAnswerEvent.Result.REDUNDANT_POEM);
                     Bukkit.getPluginManager().callEvent(customEvent);
                     BroadcastUtils.broadcast(Constants.PREFIX +
-                                    Bukkit.getOfflinePlayer(currentGamers.peekFirst()).getName() +
+                                    Bukkit.getOfflinePlayer(getCurrent()).getName() +
                                     " 行令“" + session.getContent() + "”。同前人重。須另覓佳句。",
                             game.getPlayers());
                     continue;
@@ -101,19 +103,19 @@ class FBTask {
                         kickCurrent();
                         continue;
                     }
-                    AsyncFBAnswerEvent customEvent = new AsyncFBAnswerEvent(game, Bukkit.getPlayer(currentGamers.peekFirst()), session.getContent(), AsyncFBAnswerEvent.Result.UNKNOWN_POEM);
+                    AsyncFBAnswerEvent customEvent = new AsyncFBAnswerEvent(game, Bukkit.getPlayer(getCurrent()), session.getContent(), AsyncFBAnswerEvent.Result.UNKNOWN_POEM);
                     Bukkit.getPluginManager().callEvent(customEvent);
                     BroadcastUtils.broadcast(Constants.PREFIX +
-                                    Bukkit.getOfflinePlayer(currentGamers.peekFirst()).getName() +
+                                    Bukkit.getOfflinePlayer(getCurrent()).getName() +
                                     " 行令“" + session.getContent() + "”。不知所云者何。",
                             game.getPlayers());
                 } else {
                     session.setCorrect(true);
-                    AsyncFBAnswerEvent customEvent = new AsyncFBAnswerEvent(game, Bukkit.getPlayer(currentGamers.peekFirst()), session.getContent(), AsyncFBAnswerEvent.Result.SUCCESS);
+                    AsyncFBAnswerEvent customEvent = new AsyncFBAnswerEvent(game, Bukkit.getPlayer(getCurrent()), session.getContent(), AsyncFBAnswerEvent.Result.SUCCESS);
                     Bukkit.getPluginManager().callEvent(customEvent);
                     initNewRound.set(true);
                     TextComponent component = new TextComponent(Constants.PREFIX);
-                    component.addExtra(new TextComponent(Bukkit.getOfflinePlayer(currentGamers.peekFirst()).getName()));
+                    component.addExtra(new TextComponent(Bukkit.getOfflinePlayer(getCurrent()).getName()));
                     component.addExtra(new TextComponent(" 行令“"));
                     component.addExtra(new TextComponent(session.getContent()));
                     component.addExtra(new TextComponent("”。句出《"));
@@ -127,6 +129,11 @@ class FBTask {
                 kickCurrent();
             }
         }
+        countDownTask.cancel();
+    }
+
+    public UUID getCurrent() {
+        return currentGamers.peekFirst();
     }
 
     private void kickCurrent() {
@@ -135,11 +142,11 @@ class FBTask {
         if (player == null) {
             return;
         }
-        AsyncFBTimeoutEvent event = new AsyncFBTimeoutEvent(game, Bukkit.getPlayer(currentGamers.peekFirst()));
+        AsyncFBTimeoutEvent event = new AsyncFBTimeoutEvent(game, Bukkit.getPlayer(player));
         Bukkit.getPluginManager().callEvent(event);
         BroadcastUtils.broadcast(
-                Constants.PREFIX + Bukkit.getOfflinePlayer(player).getName() + " 自罰三樽。"
-                , game.getPlayers()
+                Constants.PREFIX + Bukkit.getOfflinePlayer(player).getName() + " 自罰三樽。",
+                game.getPlayers()
         );
     }
 
